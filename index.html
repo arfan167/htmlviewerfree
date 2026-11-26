@@ -1,0 +1,2889 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTML Studio —  IDE & Multimedia Studio</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- JSZip Library untuk membaca & membina fail ZIP -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <!-- JS-Beautify Library untuk mengemas kod HTML, CSS, dan JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.15.1/beautify.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.15.1/beautify-css.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.15.1/beautify-html.min.js"></script>
+    <style>
+        :root {
+            --bg-app: #09090b;
+            --bg-sidebar: #0e0e12;
+            --bg-panel: #121218;
+            --bg-header: #181820;
+            --border-color: rgba(255, 255, 255, 0.1);
+            --text-primary: #f4f4f5;
+            --text-secondary: #a1a1aa;
+            --accent: #6366f1;
+            --accent-secondary: #a855f7;
+            --accent-hover: #4f46e5;
+            --danger: #ef4444;
+            --warn: #f59e0b;
+            --water: #38bdf8;
+            --success: #10b981;
+            --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-app);
+            color: var(--text-primary);
+            font-family: var(--font-sans);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Ambient Background Glow */
+        .bg-glow {
+            position: absolute;
+            width: 500px;
+            height: 500px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.22) 0%, rgba(168, 85, 247, 0.08) 50%, transparent 70%);
+            filter: blur(70px);
+            pointer-events: none;
+            z-index: 150;
+        }
+        .glow-1 { top: -120px; left: -120px; }
+        .glow-2 { bottom: -120px; right: -120px; background: radial-gradient(circle, rgba(236, 72, 153, 0.18) 0%, transparent 70%); }
+
+        /* Initial App Loading Screen */
+        #app-preloader {
+            position: fixed;
+            inset: 0;
+            z-index: 300;
+            background: #09090b;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.6s ease, visibility 0.6s ease;
+        }
+
+        #app-preloader.fade-out {
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        .preloader-brand {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 24px;
+            background: linear-gradient(135deg, #6366f1, #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.5px;
+        }
+
+        .progress-bar-container {
+            width: 240px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #6366f1, #a855f7);
+            border-radius: 10px;
+            transition: width 0.25s ease;
+        }
+
+        .preloader-status {
+            margin-top: 14px;
+            font-size: 0.8rem;
+            color: #71717a;
+            letter-spacing: 0.5px;
+        }
+
+        /* Welcome / Language Selector Modal */
+        #welcome-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 200;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(9, 9, 11, 0.88);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            transition: opacity 0.5s ease, transform 0.5s ease;
+        }
+
+        #welcome-modal.fade-out {
+            opacity: 0;
+            pointer-events: none;
+            transform: scale(1.04);
+        }
+
+        .welcome-card {
+            background: rgba(24, 24, 37, 0.75);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            padding: 40px;
+            border-radius: 24px;
+            width: 90%;
+            max-width: 440px;
+            text-align: center;
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.65);
+            position: relative;
+            z-index: 210;
+        }
+
+        .welcome-badge {
+            display: inline-block;
+            background: rgba(99, 102, 241, 0.15);
+            border: 1px solid rgba(99, 102, 241, 0.35);
+            color: #a5b4fc;
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 5px 14px;
+            border-radius: 20px;
+            margin-bottom: 18px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .welcome-card h1 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #ffffff 30%, #a1a1aa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .welcome-card p {
+            font-size: 0.85rem;
+            color: #a1a1aa;
+            margin-bottom: 26px;
+            line-height: 1.5;
+        }
+
+        .lang-selector {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .lang-btn {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 14px 18px;
+            border-radius: 14px;
+            color: #f4f4f5;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            text-align: left;
+            font-family: inherit;
+        }
+
+        .lang-btn:hover {
+            background: rgba(99, 102, 241, 0.2);
+            border-color: rgba(99, 102, 241, 0.5);
+            transform: translateY(-2px);
+        }
+
+        .lang-code-badge {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.08);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.85rem;
+            color: #a5b4fc;
+            letter-spacing: 0.5px;
+            flex-shrink: 0;
+        }
+
+        .lang-text strong {
+            display: block;
+            font-size: 0.95rem;
+            margin-bottom: 2px;
+        }
+
+        .lang-text small {
+            font-size: 0.75rem;
+            color: #a1a1aa;
+        }
+
+        /* Header Navigation */
+        header {
+            background-color: var(--bg-header);
+            height: 54px;
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            gap: 12px;
+            z-index: 10;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .brand-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            letter-spacing: 0.2px;
+            color: var(--text-primary);
+        }
+
+        .badge {
+            background: linear-gradient(135deg, var(--accent), var(--accent-secondary));
+            color: #ffffff;
+            font-size: 0.68rem;
+            font-weight: 700;
+            padding: 3px 9px;
+            border-radius: 20px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+
+        .file-info {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            background-color: rgba(255, 255, 255, 0.04);
+            padding: 4px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            max-width: 160px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Segmented View Switcher */
+        .view-switcher {
+            display: inline-flex;
+            background-color: var(--bg-app);
+            padding: 3px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .view-btn {
+            background: transparent;
+            color: var(--text-secondary);
+            border: none;
+            padding: 4px 12px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            font-family: inherit;
+        }
+
+        .view-btn:hover {
+            color: var(--text-primary);
+        }
+
+        .view-btn.active {
+            background-color: var(--bg-header);
+            color: var(--text-primary);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--border-color);
+        }
+
+        .actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .header-lang-switch {
+            display: inline-flex;
+            background-color: var(--bg-app);
+            padding: 2px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            margin-right: 4px;
+        }
+
+        .header-lang-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .header-lang-btn.active {
+            background: rgba(99, 102, 241, 0.25);
+            color: #a5b4fc;
+        }
+
+        /* Buttons */
+        .btn {
+            background-color: rgba(255, 255, 255, 0.05);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-family: inherit;
+            white-space: nowrap;
+        }
+
+        .btn:hover {
+            background-color: rgba(255, 255, 255, 0.12);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-xs {
+            padding: 3px 8px;
+            font-size: 0.7rem;
+            border-radius: 5px;
+            text-transform: none;
+            letter-spacing: 0.2px;
+        }
+
+        .btn-xs.active {
+            background-color: rgba(99, 102, 241, 0.28);
+            border-color: rgba(99, 102, 241, 0.55);
+            color: #c7d2fe;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+            border-color: transparent;
+            color: #ffffff;
+            font-weight: 600;
+        }
+
+        .btn-primary:hover {
+            opacity: 0.92;
+        }
+
+        .btn-danger:hover {
+            background-color: rgba(239, 68, 68, 0.15);
+            border-color: var(--danger);
+            color: var(--danger);
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        /* Main Workspace (Sidebar + Split View) */
+        .workspace {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            position: relative;
+            z-index: 5;
+        }
+
+        /* Project File Explorer Sidebar */
+        .file-sidebar {
+            width: 245px;
+            background-color: var(--bg-sidebar);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }
+
+        .file-sidebar.hidden {
+            display: none;
+        }
+
+        .sidebar-header {
+            background-color: var(--bg-header);
+            height: 36px;
+            padding: 0 10px 0 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+
+        .sidebar-header-actions {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .file-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 7px 8px 7px 10px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.15s ease;
+            border: 1px solid transparent;
+            gap: 6px;
+        }
+
+        .file-item:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+            color: var(--text-primary);
+        }
+
+        .file-item.active {
+            background-color: rgba(99, 102, 241, 0.15);
+            border-color: rgba(99, 102, 241, 0.35);
+            color: #ffffff;
+            font-weight: 500;
+        }
+
+        .file-item-meta {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            flex: 1;
+        }
+
+        .file-item-name {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .file-item-folder {
+            font-size: 0.65rem;
+            color: #71717a;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .file-item-right {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            flex-shrink: 0;
+        }
+
+        .file-action-btn {
+            background: transparent;
+            border: none;
+            color: #71717a;
+            font-size: 0.68rem;
+            padding: 2px 4px;
+            border-radius: 4px;
+            cursor: pointer;
+            opacity: 0;
+            transition: all 0.15s ease;
+        }
+
+        .file-item:hover .file-action-btn {
+            opacity: 1;
+        }
+
+        .file-action-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-primary);
+        }
+
+        .file-action-btn.del:hover {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--danger);
+        }
+
+        .file-ext-tag {
+            font-size: 0.6rem;
+            font-weight: 700;
+            padding: 2px 5px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            flex-shrink: 0;
+        }
+
+        .ext-html { background: rgba(249, 115, 22, 0.2); color: #fdba74; }
+        .ext-css { background: rgba(56, 189, 248, 0.2); color: #7dd3fc; }
+        .ext-js { background: rgba(250, 204, 21, 0.2); color: #fde047; }
+        .ext-img { background: rgba(16, 185, 129, 0.2); color: #6ee7b7; }
+        .ext-vid { background: rgba(236, 72, 153, 0.2); color: #f9a8d4; }
+        .ext-aud { background: rgba(168, 85, 247, 0.2); color: #d8b4fe; }
+        .ext-other { background: rgba(161, 161, 170, 0.2); color: #d4d4d8; }
+
+        /* Panels */
+        .panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+
+        .panel.hidden {
+            display: none;
+        }
+
+        .panel-editor {
+            border-right: 1px solid var(--border-color);
+            background-color: var(--bg-panel);
+        }
+
+        .panel-editor.full-width {
+            border-right: none;
+        }
+
+        .panel-header {
+            background-color: var(--bg-header);
+            height: 36px;
+            padding: 0 12px 0 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+
+        .panel-header-right {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* Find & Replace Bar */
+        .find-bar {
+            background-color: #16161f;
+            border-bottom: 1px solid var(--border-color);
+            padding: 6px 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .find-bar.hidden {
+            display: none;
+        }
+
+        .find-input {
+            background-color: var(--bg-app);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 4px 8px;
+            border-radius: 5px;
+            font-size: 0.75rem;
+            font-family: var(--font-mono);
+            outline: none;
+            width: 140px;
+        }
+
+        .find-input:focus {
+            border-color: var(--accent);
+        }
+
+        .find-count {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            margin-right: 4px;
+        }
+
+        /* Editor Area with Line Numbers */
+        .editor-wrapper {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .editor-wrapper.hidden {
+            display: none;
+        }
+
+        .line-numbers {
+            width: 48px;
+            background-color: var(--bg-panel);
+            color: #52525b;
+            font-family: var(--font-mono);
+            font-size: 13px;
+            line-height: 1.6;
+            padding: 16px 8px;
+            text-align: right;
+            user-select: none;
+            border-right: 1px solid var(--border-color);
+            overflow: hidden;
+        }
+
+        textarea {
+            flex: 1;
+            background-color: var(--bg-panel);
+            color: var(--text-primary);
+            border: none;
+            padding: 16px;
+            font-family: var(--font-mono);
+            font-size: 13px;
+            line-height: 1.6;
+            resize: none;
+            outline: none;
+            white-space: pre;
+            overflow-wrap: normal;
+            overflow-x: auto;
+        }
+
+        /* Built-in Media Asset Viewer */
+        .media-viewer {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            background-color: var(--bg-panel);
+            overflow: auto;
+            gap: 16px;
+        }
+
+        .media-viewer.hidden {
+            display: none;
+        }
+
+        .media-viewer img {
+            max-width: 100%;
+            max-height: 65vh;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+            background-image: linear-gradient(45deg, #1c1c24 25%, transparent 25%),
+                              linear-gradient(-45deg, #1c1c24 25%, transparent 25%),
+                              linear-gradient(45deg, transparent 75%, #1c1c24 75%),
+                              linear-gradient(-45deg, transparent 75%, #1c1c24 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+        }
+
+        .media-viewer video {
+            max-width: 100%;
+            max-height: 65vh;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            background: #000000;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .media-viewer audio {
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .media-meta-card {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border-color);
+            padding: 10px 18px;
+            border-radius: 10px;
+            text-align: center;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .media-meta-card strong {
+            display: block;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        /* Responsive Preview Stage */
+        .preview-stage {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: stretch;
+            background-color: #0b0b0f;
+            overflow: auto;
+            position: relative;
+        }
+
+        .preview-stage.device-mode {
+            padding: 20px;
+            background-image: radial-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px);
+            background-size: 16px 16px;
+        }
+
+        iframe {
+            background-color: #ffffff;
+            border: none;
+            width: 100%;
+            height: 100%;
+            transition: width 0.25s ease, box-shadow 0.25s ease;
+        }
+
+        .preview-stage.device-mode iframe {
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+        }
+
+        iframe:fullscreen {
+            width: 100vw !important;
+            height: 100vh !important;
+            border-radius: 0 !important;
+            background-color: #ffffff;
+        }
+
+        /* Built-in JS Console Drawer */
+        .console-drawer {
+            height: 150px;
+            background-color: #0b0b0f;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }
+
+        .console-drawer.hidden {
+            display: none;
+        }
+
+        .console-header {
+            height: 30px;
+            background-color: var(--bg-header);
+            padding: 0 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+        }
+
+        .console-output {
+            flex: 1;
+            overflow-y: auto;
+            padding: 6px 12px;
+            font-family: var(--font-mono);
+            font-size: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .console-line {
+            padding: 3px 6px;
+            border-radius: 4px;
+            word-break: break-word;
+            border-left: 2px solid transparent;
+        }
+
+        .console-log { color: #e4e4e7; border-left-color: #52525b; }
+        .console-warn { color: #fcd34d; background: rgba(245, 158, 11, 0.1); border-left-color: var(--warn); }
+        .console-error { color: #fca5a5; background: rgba(239, 68, 68, 0.12); border-left-color: var(--danger); }
+
+        .console-badge {
+            background: rgba(239, 68, 68, 0.25);
+            color: #fca5a5;
+            padding: 1px 6px;
+            border-radius: 10px;
+            font-size: 0.65rem;
+            margin-left: 4px;
+        }
+
+        /* Drag & Drop Overlay */
+        .drop-overlay {
+            position: absolute;
+            inset: 0;
+            background-color: rgba(9, 9, 11, 0.88);
+            border: 2px dashed var(--accent);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            pointer-events: none;
+            backdrop-filter: blur(8px);
+        }
+
+        .drop-overlay.active {
+            display: flex;
+        }
+
+        .drop-message {
+            text-align: center;
+            color: var(--text-primary);
+        }
+
+        .drop-message h2 {
+            font-size: 1.25rem;
+            margin-bottom: 6px;
+            color: #a5b4fc;
+        }
+
+        .drop-message p {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        /* Bottom Status Bar & Wellness Timers */
+        footer {
+            background-color: var(--bg-header);
+            height: 32px;
+            padding: 0 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid var(--border-color);
+            font-size: 0.72rem;
+            color: var(--text-secondary);
+            z-index: 20;
+            position: relative;
+        }
+
+        .status-group {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .timer-pill-group {
+            display: inline-flex;
+            align-items: center;
+            background-color: var(--bg-app);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 2px 6px;
+            gap: 6px;
+        }
+
+        .timer-display {
+            font-family: var(--font-mono);
+            font-weight: 700;
+            color: var(--text-primary);
+            font-size: 0.72rem;
+        }
+
+        .timer-display.focus-active { color: #a5b4fc; }
+        .timer-display.break-active { color: var(--success); }
+        .timer-display.water-active { color: var(--water); }
+
+        .mini-ctrl-btn {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-primary);
+            padding: 1px 6px;
+            border-radius: 4px;
+            font-size: 0.66rem;
+            cursor: pointer;
+            font-family: inherit;
+        }
+
+        .mini-ctrl-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        /* Popover Settings for Timer & Hydration */
+        .timer-popover {
+            position: absolute;
+            bottom: 38px;
+            right: 14px;
+            width: 300px;
+            background: #181822;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 18px 40px rgba(0, 0, 0, 0.75);
+            z-index: 250;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .timer-popover.hidden {
+            display: none;
+        }
+
+        .timer-popover h3 {
+            font-size: 0.82rem;
+            color: var(--text-primary);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .setting-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .setting-input, .setting-select {
+            background: var(--bg-app);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-family: inherit;
+            width: 95px;
+        }
+
+        /* Toast Alert Banner for Break / Drink Water */
+        .wellness-toast {
+            position: fixed;
+            bottom: 44px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(24, 24, 34, 0.96);
+            border: 1px solid rgba(99, 102, 241, 0.55);
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.75);
+            padding: 12px 20px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            z-index: 280;
+            backdrop-filter: blur(12px);
+        }
+
+        .wellness-toast.hidden {
+            display: none;
+        }
+
+        .wellness-toast.water-alert {
+            border-color: rgba(56, 189, 248, 0.65);
+        }
+
+        .wellness-toast-text strong {
+            display: block;
+            font-size: 0.85rem;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+
+        .wellness-toast-text span {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        /* Responsive Layout */
+        @media (max-width: 1180px) {
+            .file-info {
+                display: none;
+            }
+            .file-sidebar {
+                width: 195px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .workspace {
+                flex-direction: column;
+            }
+            .file-sidebar {
+                width: 100%;
+                height: 120px;
+                border-right: none;
+                border-bottom: 1px solid var(--border-color);
+            }
+            .panel-editor {
+                border-right: none;
+                border-bottom: 1px solid var(--border-color);
+            }
+            .panel-editor.full-width {
+                border-bottom: none;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- App Preloader Loading Screen -->
+    <div id="app-preloader">
+        <div class="preloader-brand">HTML Studio</div>
+        <div class="progress-bar-container">
+            <div class="progress-bar-fill" id="preloader-bar"></div>
+        </div>
+        <div class="preloader-status" id="preloader-text">Loading workspace...</div>
+    </div>
+
+    <!-- Welcome / Language Selector Modal -->
+    <div id="welcome-modal">
+        <div class="bg-glow glow-1"></div>
+        <div class="bg-glow glow-2"></div>
+
+        <div class="welcome-card">
+            <div class="welcome-badge">Welcome • Selamat Datang</div>
+            <h1>HTML Project Studio</h1>
+            <p>Sila pilih bahasa pilihan anda untuk meneruskan / Please select your preferred language to continue.</p>
+            
+            <div class="lang-selector">
+                <button class="lang-btn" onclick="startApp('ms')">
+                    <span class="lang-code-badge">MY</span>
+                    <div class="lang-text">
+                        <strong>Bahasa Melayu</strong>
+                        <small>Teruskan dalam Bahasa Melayu</small>
+                    </div>
+                </button>
+
+                <button class="lang-btn" onclick="startApp('en')">
+                    <span class="lang-code-badge">EN</span>
+                    <div class="lang-text">
+                        <strong>English</strong>
+                        <small>Continue in English</small>
+                    </div>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Wellness / Timer Toast Notification -->
+    <div class="wellness-toast hidden" id="wellnessToast">
+        <div class="wellness-toast-text">
+            <strong id="toastTitle">Masa Rehat!</strong>
+            <span id="toastDesc">Rehatkan mata anda seketika.</span>
+        </div>
+        <button class="btn btn-xs btn-primary" id="dismissToastBtn">Faham</button>
+    </div>
+
+    <!-- Header Navigation -->
+    <header>
+        <div class="brand">
+            <span class="brand-title">HTML Studio</span>
+            <span class="badge">IDE</span>
+            <span class="file-info" id="projectName">untitled.html</span>
+        </div>
+
+        <!-- View Mode Switcher -->
+        <div class="view-switcher" role="group" aria-label="View Mode">
+            <button class="view-btn active" data-mode="split" id="btn-mode-split" title="Ctrl + 1">Split</button>
+            <button class="view-btn" data-mode="code" id="btn-mode-code" title="Ctrl + 2">Code</button>
+            <button class="view-btn" data-mode="preview" id="btn-mode-preview" title="Ctrl + 3">Preview</button>
+        </div>
+
+        <div class="actions">
+            <div class="header-lang-switch">
+                <button class="header-lang-btn active" id="hdr-lang-ms" onclick="setLanguage('ms')">BM</button>
+                <button class="header-lang-btn" id="hdr-lang-en" onclick="setLanguage('en')">EN</button>
+            </div>
+            <label for="fileInput" class="btn btn-primary" id="lbl-open-file">Buka Fail / ZIP</label>
+            <input type="file" id="fileInput" accept=".zip,.html,.htm,.css,.js,.txt,.png,.jpg,.jpeg,.gif,.webp,.svg,.mp4,.webm,.mp3,.wav,.ogg" multiple>
+            
+            <label for="folderInput" class="btn" id="lbl-open-folder">Buka Folder</label>
+            <input type="file" id="folderInput" webkitdirectory directory multiple>
+
+            <button class="btn" id="copyBtn">Salin</button>
+            <button class="btn" id="downloadBtn">Muat Turun</button>
+            <button class="btn btn-danger" id="clearBtn">Kosongkan</button>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <div class="workspace" id="dropZone">
+        <!-- Drag & Drop Visual Feedback -->
+        <div class="drop-overlay" id="dropOverlay">
+            <div class="drop-message">
+                <h2 id="drop-title">Lepaskan Folder, ZIP, atau Fail Media Di Sini</h2>
+                <p id="drop-desc">Menyokong folder projek, arkib .zip, HTML/CSS/JS, gambar, video, dan audio</p>
+            </div>
+        </div>
+
+        <!-- Project File Explorer Sidebar -->
+        <aside class="file-sidebar" id="fileSidebar">
+            <div class="sidebar-header">
+                <span id="hdr-explorer">Fail Projek (<span id="fileCountBadge">1</span>)</span>
+                <div class="sidebar-header-actions">
+                    <button class="btn btn-xs btn-primary" id="newFileBtn" title="Cipta fail baharu">+ Fail</button>
+                </div>
+            </div>
+            <div class="file-list" id="fileList"></div>
+        </aside>
+
+        <!-- Left Panel: Source Code OR Media Viewer -->
+        <div class="panel panel-editor" id="editorPanel">
+            <div class="panel-header">
+                <span id="activeFileLabel">untitled.html</span>
+                <div class="panel-header-right">
+                    <span id="activeFileType">UTF-8</span>
+                    <button class="btn btn-xs" id="formatCodeBtn" title="Kemaskan Kod (Shift + Alt + F)">Format</button>
+                    <button class="btn btn-xs" id="toggleFindBtn" title="Cari & Ganti (Ctrl + F)">Cari</button>
+                </div>
+            </div>
+
+            <!-- Find & Replace Bar -->
+            <div class="find-bar hidden" id="findBar">
+                <input type="text" class="find-input" id="findInput" placeholder="Cari teks...">
+                <button class="btn btn-xs" id="findNextBtn">Seterusnya</button>
+                <input type="text" class="find-input" id="replaceInput" placeholder="Ganti dengan...">
+                <button class="btn btn-xs" id="replaceBtn">Ganti</button>
+                <button class="btn btn-xs" id="replaceAllBtn">Ganti Semua</button>
+                <span class="find-count" id="findCountLabel">0 padanan</span>
+                <button class="btn btn-xs" id="closeFindBtn">Tutup</button>
+            </div>
+
+            <!-- Text / Code Editor -->
+            <div class="editor-wrapper" id="editorWrapper">
+                <div class="line-numbers" id="lineNumbers">1</div>
+                <textarea id="codeDisplay" spellcheck="false" placeholder="Seret dan lepaskan satu folder projek, fail .zip, atau fail HTML/CSS/JS/Media terus ke sini..."></textarea>
+            </div>
+
+            <!-- Built-in Media Asset Viewer -->
+            <div class="media-viewer hidden" id="mediaViewer"></div>
+        </div>
+
+        <!-- Right Panel: Live Preview & Console -->
+        <div class="panel" id="previewPanel">
+            <div class="panel-header">
+                <span id="hdr-preview">Paparan Langsung</span>
+                <div class="panel-header-right">
+                    <button class="btn btn-xs device-btn active" data-width="100%">Desktop</button>
+                    <button class="btn btn-xs device-btn" data-width="768px">Tablet</button>
+                    <button class="btn btn-xs device-btn" data-width="375px">Mobile</button>
+                    <button class="btn btn-xs" id="toggleConsoleBtn">Konsol <span class="console-badge hidden" id="consoleErrorBadge">0</span></button>
+                    <button class="btn btn-xs" id="refreshPreviewBtn" title="Muat semula pratonton">Muat Semula</button>
+                    <button class="btn btn-xs" id="fullscreenBtn">Skrin Penuh</button>
+                </div>
+            </div>
+
+            <div class="preview-stage" id="previewStage">
+                <iframe id="previewFrame" sandbox="allow-scripts allow-same-origin" allowfullscreen></iframe>
+            </div>
+
+            <!-- Built-in JS Console Drawer -->
+            <div class="console-drawer hidden" id="consoleDrawer">
+                <div class="console-header">
+                    <span id="hdr-console">Konsol JavaScript</span>
+                    <button class="btn btn-xs" id="clearConsoleBtn">Kosongkan Log</button>
+                </div>
+                <div class="console-output" id="consoleOutput"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Status Bar & Built-in Pomodoro / Hydration Timer -->
+    <footer>
+        <div class="status-group">
+            <span id="statusText">Sedia</span>
+            <span id="viewModeStatus">Mod: Split</span>
+            <span id="sessionStatus">Sesi: Bersih</span>
+        </div>
+
+        <div class="status-group">
+            <span id="lineCount">Baris: 1</span>
+            <span id="charCount">Aksara: 0</span>
+            <span id="fileSize">Saiz: 0 B</span>
+
+            <!-- Pomodoro Focus & Break Timer -->
+            <div class="timer-pill-group" title="Pemasa Fokus & Rehat">
+                <span id="pomoPhaseLabel">Fokus:</span>
+                <span class="timer-display focus-active" id="pomoTimerDisplay">25:00</span>
+                <button class="mini-ctrl-btn" id="pomoToggleBtn">Mula</button>
+                <button class="mini-ctrl-btn" id="pomoResetBtn">Reset</button>
+            </div>
+
+            <!-- Hydration / Drink Water Reminder -->
+            <div class="timer-pill-group" title="Peringatan Minum Air">
+                <span id="waterLabel">Air:</span>
+                <span class="timer-display water-active" id="waterTimerDisplay">30:00</span>
+                <button class="mini-ctrl-btn" id="waterResetBtn">Minum</button>
+            </div>
+
+            <button class="mini-ctrl-btn" id="timerSettingsBtn">Tetapan</button>
+        </div>
+
+        <!-- Timer & Hydration Custom Settings Popover -->
+        <div class="timer-popover hidden" id="timerPopover">
+            <h3>
+                <span id="popover-title">Tetapan Pemasa & Air</span>
+                <button class="mini-ctrl-btn" id="closePopoverBtn">X</button>
+            </h3>
+            <div class="setting-row">
+                <label for="cfgFocusMin" id="lbl-cfg-focus">Tempoh Fokus (minit)</label>
+                <input type="number" id="cfgFocusMin" class="setting-input" min="1" max="180" value="25">
+            </div>
+            <div class="setting-row">
+                <label for="cfgBreakMin" id="lbl-cfg-break">Tempoh Rehat (minit)</label>
+                <input type="number" id="cfgBreakMin" class="setting-input" min="1" max="60" value="5">
+            </div>
+            <div class="setting-row">
+                <label for="cfgWaterMin" id="lbl-cfg-water">Peringatan Air (minit)</label>
+                <input type="number" id="cfgWaterMin" class="setting-input" min="1" max="180" value="30">
+            </div>
+            <div class="setting-row">
+                <label for="cfgWaterEnabled" id="lbl-cfg-water-on">Aktifkan Peringatan Air</label>
+                <input type="checkbox" id="cfgWaterEnabled" checked>
+            </div>
+            <div class="setting-row">
+                <label for="cfgSoundType" id="lbl-cfg-sound">Bunyi Notifikasi</label>
+                <select id="cfgSoundType" class="setting-select">
+                    <option value="chime">Chime Lembut</option>
+                    <option value="bell">Loceng Halus</option>
+                    <option value="ping">Digital Ping</option>
+                    <option value="none">Senyap (Mute)</option>
+                </select>
+            </div>
+            <div style="display:flex; justify-content:space-between; gap:8px; margin-top:4px;">
+                <button class="btn btn-xs" id="testSoundBtn" style="flex:1;">Uji Bunyi</button>
+                <button class="btn btn-xs btn-primary" id="saveTimerCfgBtn" style="flex:1;">Simpan</button>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // 1. App Preloader & Fresh Session Initialization
+        window.addEventListener('DOMContentLoaded', () => {
+            const progressBar = document.getElementById('preloader-bar');
+            const progressText = document.getElementById('preloader-text');
+            const preloader = document.getElementById('app-preloader');
+            
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += Math.floor(Math.random() * 22) + 12;
+                if (progress > 100) progress = 100;
+                
+                progressBar.style.width = progress + '%';
+                
+                if (progress === 100) {
+                    clearInterval(interval);
+                    progressText.innerText = 'Ready';
+                    setTimeout(() => {
+                        preloader.classList.add('fade-out');
+                    }, 300);
+                }
+            }, 110);
+
+            // Padam sebarang storan fail lama supaya setiap sesi baharu bermula bersih
+            try {
+                localStorage.removeItem('html_studio_pro_autosave_v1');
+            } catch (e) {}
+
+            renderFileSidebar(Object.keys(projectFiles));
+            loadTimerPreferences();
+        });
+
+        // 2. Bilingual Translation System (BM & EN)
+        const i18n = {
+            ms: {
+                openFile: "Buka Fail / ZIP",
+                openFolder: "Buka Folder",
+                copy: "Salin",
+                download: "Muat Turun",
+                clear: "Kosongkan",
+                newFile: "+ Fail",
+                formatBtn: "Format",
+                findBtn: "Cari",
+                findPlaceholder: "Cari teks...",
+                replacePlaceholder: "Ganti dengan...",
+                findNext: "Seterusnya",
+                replace: "Ganti",
+                replaceAll: "Ganti Semua",
+                close: "Tutup",
+                matches: " padanan",
+                dropTitle: "Lepaskan Folder, ZIP, atau Fail Media Di Sini",
+                dropDesc: "Menyokong folder projek, arkib .zip, HTML/CSS/JS, gambar, video, dan audio",
+                hdrExplorer: "Fail Projek",
+                hdrPreview: "Paparan Langsung",
+                hdrConsole: "Konsol JavaScript",
+                clearConsole: "Kosongkan Log",
+                refreshPreview: "Muat Semula",
+                fullscreen: "Skrin Penuh",
+                placeholder: "Seret dan lepaskan satu folder projek, fail .zip, atau fail HTML/CSS/JS/Media terus ke sini...",
+                statusReady: "Sedia",
+                statusFormatted: "Kod dikemaskan dengan rapi",
+                statusLoadedFolder: "Folder dimuatkan: ",
+                statusLoadedZip: "Projek ZIP diekstrak: ",
+                statusLoadedFile: "Fail dimuatkan: ",
+                statusCopied: "Kod disalin ke papan keratan",
+                statusCopyMediaErr: "Fail media binari tidak boleh disalin sebagai teks",
+                statusDownloaded: "Dimuat turun: ",
+                statusCleared: "Ruang kerja dikosongkan",
+                statusFsEnter: "Paparan skrin penuh aktif (Tekan Esc untuk keluar)",
+                statusFsExit: "Keluar dari skrin penuh",
+                sessionFresh: "Sesi: Bersih",
+                modeSplit: "Mod: Split",
+                modeCode: "Mod: Kod Sahaja",
+                modePreview: "Mod: Pratonton Sahaja",
+                lines: "Baris: ",
+                chars: "Aksara: ",
+                size: "Saiz: ",
+                errZip: "Gagal membaca fail ZIP. Pastikan arkib tidak rosak.",
+                errNoValid: "Tiada fail yang disokong ditemui.",
+                promptNewFile: "Masukkan nama fail baharu (contoh: style.css, app.js, about.html):",
+                promptRenameFile: "Masukkan nama baharu untuk fail ini:",
+                confirmDeleteFile: "Adakah anda pasti mahu memadam fail ini?",
+                errFileExists: "Nama fail tersebut sudah wujud dalam projek.",
+                pomoFocus: "Fokus:",
+                pomoBreak: "Rehat:",
+                pomoStart: "Mula",
+                pomoPause: "Jeda",
+                pomoReset: "Reset",
+                waterLabel: "Air:",
+                waterDrinkBtn: "Minum",
+                timerSettings: "Tetapan",
+                popoverTitle: "Tetapan Pemasa & Air",
+                lblFocusMin: "Tempoh Fokus (minit)",
+                lblBreakMin: "Tempoh Rehat (minit)",
+                lblWaterMin: "Peringatan Air (minit)",
+                lblWaterOn: "Aktifkan Peringatan Air",
+                lblSound: "Bunyi Notifikasi",
+                testSound: "Uji Bunyi",
+                saveCfg: "Simpan",
+                dismissToast: "Faham",
+                alertBreakTitle: "Masa Rehat Tiba!",
+                alertBreakDesc: "Sesi fokus tamat. Rehatkan mata anda selama beberapa minit.",
+                alertFocusTitle: "Masa Rehat Tamat!",
+                alertFocusDesc: "Sedia untuk kembali menyambung sesi fokus koding anda.",
+                alertWaterTitle: "Masa Untuk Minum Air!",
+                alertWaterDesc: "Kekal hidrat semasa menyiapkan projek anda."
+            },
+            en: {
+                openFile: "Open File / ZIP",
+                openFolder: "Open Folder",
+                copy: "Copy",
+                download: "Download",
+                clear: "Clear",
+                newFile: "+ File",
+                formatBtn: "Format",
+                findBtn: "Find",
+                findPlaceholder: "Find text...",
+                replacePlaceholder: "Replace with...",
+                findNext: "Next",
+                replace: "Replace",
+                replaceAll: "Replace All",
+                close: "Close",
+                matches: " matches",
+                dropTitle: "Drop Folder, ZIP, or Media Files Here",
+                dropDesc: "Supports project folders, .zip archives, HTML/CSS/JS, images, video, and audio",
+                hdrExplorer: "Project Files",
+                hdrPreview: "Live Preview",
+                hdrConsole: "JavaScript Console",
+                clearConsole: "Clear Logs",
+                refreshPreview: "Refresh",
+                fullscreen: "Fullscreen",
+                placeholder: "Drag and drop an entire project folder, .zip archive, or HTML/CSS/JS/Media files here...",
+                statusReady: "Ready",
+                statusFormatted: "Code formatted cleanly",
+                statusLoadedFolder: "Folder loaded: ",
+                statusLoadedZip: "ZIP project extracted: ",
+                statusLoadedFile: "Loaded: ",
+                statusCopied: "Code copied to clipboard",
+                statusCopyMediaErr: "Binary media files cannot be copied as text",
+                statusDownloaded: "Downloaded: ",
+                statusCleared: "Workspace cleared",
+                statusFsEnter: "Fullscreen preview active (Press Esc to exit)",
+                statusFsExit: "Exited fullscreen",
+                sessionFresh: "Session: Fresh",
+                modeSplit: "Mode: Split",
+                modeCode: "Mode: Code Only",
+                modePreview: "Mode: Preview Only",
+                lines: "Lines: ",
+                chars: "Characters: ",
+                size: "Size: ",
+                errZip: "Failed to read ZIP file. Ensure archive is valid.",
+                errNoValid: "No supported files found.",
+                promptNewFile: "Enter new file name (e.g. style.css, app.js, about.html):",
+                promptRenameFile: "Enter new name for this file:",
+                confirmDeleteFile: "Are you sure you want to delete this file?",
+                errFileExists: "A file with that name already exists.",
+                pomoFocus: "Focus:",
+                pomoBreak: "Break:",
+                pomoStart: "Start",
+                pomoPause: "Pause",
+                pomoReset: "Reset",
+                waterLabel: "Water:",
+                waterDrinkBtn: "Drink",
+                timerSettings: "Settings",
+                popoverTitle: "Timer & Hydration Settings",
+                lblFocusMin: "Focus Duration (mins)",
+                lblBreakMin: "Break Duration (mins)",
+                lblWaterMin: "Water Reminder (mins)",
+                lblWaterOn: "Enable Water Reminder",
+                lblSound: "Notification Sound",
+                testSound: "Test Sound",
+                saveCfg: "Save",
+                dismissToast: "Got it",
+                alertBreakTitle: "Time for a Break!",
+                alertBreakDesc: "Focus session complete. Rest your eyes for a few minutes.",
+                alertFocusTitle: "Break Finished!",
+                alertFocusDesc: "Ready to jump back into your coding session.",
+                alertWaterTitle: "Time to Drink Water!",
+                alertWaterDesc: "Stay hydrated while working on your project."
+            }
+        };
+
+        let currentLang = 'ms';
+        let currentMode = 'split';
+        const TIMER_CFG_KEY = 'html_studio_timer_cfg_v1';
+
+        // Virtual File System State (Sentiasa bermula kosong)
+        let projectFiles = {
+            'untitled.html': { type: 'text', content: '', size: 0 }
+        };
+        let activeFilePath = 'untitled.html';
+        let currentPreviewHtmlPath = 'untitled.html';
+        let projectArchiveName = 'untitled.html';
+        let isMultiFileProject = false;
+        let consoleErrorCount = 0;
+
+        const textExtensions = ['html', 'htm', 'css', 'js', 'json', 'txt', 'svg'];
+        const imageExtensions = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'ico'];
+        const videoExtensions = ['mp4', 'webm', 'mov', 'ogv'];
+        const audioExtensions = ['mp3', 'wav', 'ogg', 'm4a', 'aac'];
+
+        function getFileCategory(ext) {
+            if (textExtensions.includes(ext)) return 'text';
+            if (imageExtensions.includes(ext)) return 'image';
+            if (videoExtensions.includes(ext)) return 'video';
+            if (audioExtensions.includes(ext)) return 'audio';
+            return null;
+        }
+
+        function getMimeType(ext) {
+            const mimes = {
+                png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml', ico: 'image/x-icon',
+                mp4: 'video/mp4', webm: 'video/webm', ogv: 'video/ogg', mov: 'video/quicktime',
+                mp3: 'audio/mpeg', wav: 'audio/wav', ogg: 'audio/ogg', m4a: 'audio/mp4', aac: 'audio/aac'
+            };
+            return mimes[ext] || 'application/octet-stream';
+        }
+
+        function revokeAllBlobUrls() {
+            Object.values(projectFiles).forEach(entry => {
+                if (entry && entry.url) {
+                    URL.revokeObjectURL(entry.url);
+                }
+            });
+        }
+
+        function setLanguage(lang) {
+            currentLang = lang;
+            const t = i18n[lang];
+
+            document.getElementById('lbl-open-file').textContent = t.openFile;
+            document.getElementById('lbl-open-folder').textContent = t.openFolder;
+            document.getElementById('copyBtn').textContent = t.copy;
+            document.getElementById('downloadBtn').textContent = t.download;
+            document.getElementById('clearBtn').textContent = t.clear;
+            document.getElementById('newFileBtn').textContent = t.newFile;
+            document.getElementById('formatCodeBtn').textContent = t.formatBtn;
+            document.getElementById('toggleFindBtn').textContent = t.findBtn;
+            document.getElementById('findInput').placeholder = t.findPlaceholder;
+            document.getElementById('replaceInput').placeholder = t.replacePlaceholder;
+            document.getElementById('findNextBtn').textContent = t.findNext;
+            document.getElementById('replaceBtn').textContent = t.replace;
+            document.getElementById('replaceAllBtn').textContent = t.replaceAll;
+            document.getElementById('closeFindBtn').textContent = t.close;
+
+            document.getElementById('drop-title').textContent = t.dropTitle;
+            document.getElementById('drop-desc').textContent = t.dropDesc;
+            document.getElementById('hdr-preview').textContent = t.hdrPreview;
+            document.getElementById('hdr-console').textContent = t.hdrConsole;
+            document.getElementById('clearConsoleBtn').textContent = t.clearConsole;
+            document.getElementById('refreshPreviewBtn').textContent = t.refreshPreview;
+            document.getElementById('fullscreenBtn').textContent = t.fullscreen;
+            document.getElementById('codeDisplay').placeholder = t.placeholder;
+            document.getElementById('statusText').textContent = t.statusReady;
+            document.getElementById('sessionStatus').textContent = t.sessionFresh;
+
+            document.getElementById('pomoPhaseLabel').textContent = pomoIsBreak ? t.pomoBreak : t.pomoFocus;
+            document.getElementById('pomoToggleBtn').textContent = pomoRunning ? t.pomoPause : t.pomoStart;
+            document.getElementById('pomoResetBtn').textContent = t.pomoReset;
+            document.getElementById('waterLabel').textContent = t.waterLabel;
+            document.getElementById('waterResetBtn').textContent = t.waterDrinkBtn;
+            document.getElementById('timerSettingsBtn').textContent = t.timerSettings;
+            document.getElementById('popover-title').textContent = t.popoverTitle;
+            document.getElementById('lbl-cfg-focus').textContent = t.lblFocusMin;
+            document.getElementById('lbl-cfg-break').textContent = t.lblBreakMin;
+            document.getElementById('lbl-cfg-water').textContent = t.lblWaterMin;
+            document.getElementById('lbl-cfg-water-on').textContent = t.lblWaterOn;
+            document.getElementById('lbl-cfg-sound').textContent = t.lblSound;
+            document.getElementById('testSoundBtn').textContent = t.testSound;
+            document.getElementById('saveTimerCfgBtn').textContent = t.saveCfg;
+            document.getElementById('dismissToastBtn').textContent = t.dismissToast;
+
+            document.getElementById('hdr-lang-ms').classList.toggle('active', lang === 'ms');
+            document.getElementById('hdr-lang-en').classList.toggle('active', lang === 'en');
+
+            updateSidebarHeaderCount();
+            updateModeLabel();
+            updateStatsLabels();
+        }
+
+        function startApp(lang) {
+            setLanguage(lang);
+            const modal = document.getElementById('welcome-modal');
+            modal.classList.add('fade-out');
+            setTimeout(() => {
+                modal.style.display = 'none';
+            }, 500);
+        }
+
+        // DOM Elements
+        const fileInput = document.getElementById('fileInput');
+        const folderInput = document.getElementById('folderInput');
+        const codeDisplay = document.getElementById('codeDisplay');
+        const editorWrapper = document.getElementById('editorWrapper');
+        const mediaViewer = document.getElementById('mediaViewer');
+        const previewFrame = document.getElementById('previewFrame');
+        const previewStage = document.getElementById('previewStage');
+        const projectNameDisplay = document.getElementById('projectName');
+        const activeFileLabel = document.getElementById('activeFileLabel');
+        const activeFileType = document.getElementById('activeFileType');
+        const lineNumbers = document.getElementById('lineNumbers');
+        
+        const fileSidebar = document.getElementById('fileSidebar');
+        const fileListContainer = document.getElementById('fileList');
+        const newFileBtn = document.getElementById('newFileBtn');
+        const formatCodeBtn = document.getElementById('formatCodeBtn');
+
+        const editorPanel = document.getElementById('editorPanel');
+        const previewPanel = document.getElementById('previewPanel');
+        const viewButtons = document.querySelectorAll('.view-btn');
+        const deviceButtons = document.querySelectorAll('.device-btn');
+        const viewModeStatus = document.getElementById('viewModeStatus');
+        const fullscreenBtn = document.getElementById('fullscreenBtn');
+        const refreshPreviewBtn = document.getElementById('refreshPreviewBtn');
+
+        const toggleConsoleBtn = document.getElementById('toggleConsoleBtn');
+        const consoleDrawer = document.getElementById('consoleDrawer');
+        const consoleOutput = document.getElementById('consoleOutput');
+        const consoleErrorBadge = document.getElementById('consoleErrorBadge');
+        const clearConsoleBtn = document.getElementById('clearConsoleBtn');
+
+        const toggleFindBtn = document.getElementById('toggleFindBtn');
+        const findBar = document.getElementById('findBar');
+        const findInput = document.getElementById('findInput');
+        const replaceInput = document.getElementById('replaceInput');
+        const findNextBtn = document.getElementById('findNextBtn');
+        const replaceBtn = document.getElementById('replaceBtn');
+        const replaceAllBtn = document.getElementById('replaceAllBtn');
+        const closeFindBtn = document.getElementById('closeFindBtn');
+        const findCountLabel = document.getElementById('findCountLabel');
+
+        const copyBtn = document.getElementById('copyBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        
+        const dropZone = document.getElementById('dropZone');
+        const dropOverlay = document.getElementById('dropOverlay');
+
+        const statusText = document.getElementById('statusText');
+        const lineCount = document.getElementById('lineCount');
+        const charCount = document.getElementById('charCount');
+        const fileSizeDisplay = document.getElementById('fileSize');
+
+        function updateSidebarHeaderCount() {
+            const count = Object.keys(projectFiles).length;
+            document.getElementById('hdr-explorer').innerHTML = `${i18n[currentLang].hdrExplorer} (<span id="fileCountBadge">${count}</span>)`;
+        }
+
+        // ==========================================
+        // 3. AUTO-FORMAT / CODE BEAUTIFIER
+        // ==========================================
+        function formatActiveCode() {
+            const activeEntry = projectFiles[activeFilePath];
+            if (activeEntry && activeEntry.type !== 'text') return;
+            if (!codeDisplay.value.trim()) return;
+
+            const ext = activeFilePath.split('.').pop().toLowerCase();
+            const options = {
+                indent_size: 4,
+                indent_char: ' ',
+                max_preserve_newlines: 2,
+                preserve_newlines: true,
+                wrap_line_length: 0
+            };
+
+            let formatted = codeDisplay.value;
+            if (ext === 'css' && typeof css_beautify === 'function') {
+                formatted = css_beautify(formatted, options);
+            } else if ((ext === 'js' || ext === 'json') && typeof js_beautify === 'function') {
+                formatted = js_beautify(formatted, options);
+            } else if (typeof html_beautify === 'function') {
+                formatted = html_beautify(formatted, options);
+            }
+
+            codeDisplay.value = formatted;
+            updateEditorState();
+            setStatus(i18n[currentLang].statusFormatted);
+        }
+
+        formatCodeBtn.addEventListener('click', formatActiveCode);
+
+        // ==========================================
+        // 4. POMODORO FOCUS & HYDRATION TIMER + SOUND SYNTH
+        // ==========================================
+        let timerConfig = {
+            focusMinutes: 25,
+            breakMinutes: 5,
+            waterMinutes: 30,
+            waterEnabled: true,
+            soundType: 'chime'
+        };
+
+        let pomoSecondsLeft = timerConfig.focusMinutes * 60;
+        let pomoRunning = false;
+        let pomoIsBreak = false;
+        let waterSecondsLeft = timerConfig.waterMinutes * 60;
+
+        const pomoPhaseLabel = document.getElementById('pomoPhaseLabel');
+        const pomoTimerDisplay = document.getElementById('pomoTimerDisplay');
+        const pomoToggleBtn = document.getElementById('pomoToggleBtn');
+        const pomoResetBtn = document.getElementById('pomoResetBtn');
+
+        const waterTimerDisplay = document.getElementById('waterTimerDisplay');
+        const waterResetBtn = document.getElementById('waterResetBtn');
+
+        const timerSettingsBtn = document.getElementById('timerSettingsBtn');
+        const timerPopover = document.getElementById('timerPopover');
+        const closePopoverBtn = document.getElementById('closePopoverBtn');
+        const saveTimerCfgBtn = document.getElementById('saveTimerCfgBtn');
+        const testSoundBtn = document.getElementById('testSoundBtn');
+
+        const wellnessToast = document.getElementById('wellnessToast');
+        const toastTitle = document.getElementById('toastTitle');
+        const toastDesc = document.getElementById('toastDesc');
+        const dismissToastBtn = document.getElementById('dismissToastBtn');
+
+        function formatClock(totalSeconds) {
+            const mins = Math.floor(totalSeconds / 60);
+            const secs = totalSeconds % 60;
+            return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        }
+
+        function updateTimerDisplays() {
+            const t = i18n[currentLang];
+            pomoPhaseLabel.textContent = pomoIsBreak ? t.pomoBreak : t.pomoFocus;
+            pomoTimerDisplay.textContent = formatClock(pomoSecondsLeft);
+            pomoTimerDisplay.className = 'timer-display ' + (pomoIsBreak ? 'break-active' : 'focus-active');
+            pomoToggleBtn.textContent = pomoRunning ? t.pomoPause : t.pomoStart;
+
+            if (timerConfig.waterEnabled) {
+                waterTimerDisplay.textContent = formatClock(waterSecondsLeft);
+            } else {
+                waterTimerDisplay.textContent = 'OFF';
+            }
+        }
+
+        function playGentleNotification(type) {
+            if (type === 'none') return;
+            try {
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                const ctx = new AudioCtx();
+                const now = ctx.currentTime;
+
+                if (type === 'chime') {
+                    const freqs = [523.25, 659.25];
+                    freqs.forEach((f, idx) => {
+                        const osc = ctx.createOscillator();
+                        const gain = ctx.createGain();
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(f, now + idx * 0.22);
+                        gain.gain.setValueAtTime(0.001, now + idx * 0.22);
+                        gain.gain.exponentialRampToValueAtTime(0.14, now + idx * 0.22 + 0.05);
+                        gain.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.22 + 0.7);
+                        osc.connect(gain);
+                        gain.connect(ctx.destination);
+                        osc.start(now + idx * 0.22);
+                        osc.stop(now + idx * 0.22 + 0.75);
+                    });
+                } else if (type === 'bell') {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(880, now);
+                    gain.gain.setValueAtTime(0.001, now);
+                    gain.gain.exponentialRampToValueAtTime(0.15, now + 0.03);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.1);
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start(now);
+                    osc.stop(now + 1.15);
+                } else if (type === 'ping') {
+                    const freqs = [783.99, 1046.50];
+                    freqs.forEach((f, idx) => {
+                        const osc = ctx.createOscillator();
+                        const gain = ctx.createGain();
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(f, now + idx * 0.14);
+                        gain.gain.setValueAtTime(0.001, now + idx * 0.14);
+                        gain.gain.exponentialRampToValueAtTime(0.11, now + idx * 0.14 + 0.02);
+                        gain.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.14 + 0.35);
+                        osc.connect(gain);
+                        gain.connect(ctx.destination);
+                        osc.start(now + idx * 0.14);
+                        osc.stop(now + idx * 0.14 + 0.4);
+                    });
+                }
+            } catch (e) {}
+        }
+
+        function showWellnessToast(title, desc, isWater = false) {
+            toastTitle.textContent = title;
+            toastDesc.textContent = desc;
+            wellnessToast.classList.toggle('water-alert', isWater);
+            wellnessToast.classList.remove('hidden');
+            playGentleNotification(timerConfig.soundType);
+        }
+
+        dismissToastBtn.addEventListener('click', () => {
+            wellnessToast.classList.add('hidden');
+        });
+
+        setInterval(() => {
+            const t = i18n[currentLang];
+
+            if (pomoRunning) {
+                if (pomoSecondsLeft > 0) {
+                    pomoSecondsLeft--;
+                } else {
+                    pomoIsBreak = !pomoIsBreak;
+                    pomoSecondsLeft = (pomoIsBreak ? timerConfig.breakMinutes : timerConfig.focusMinutes) * 60;
+                    if (pomoIsBreak) {
+                        showWellnessToast(t.alertBreakTitle, t.alertBreakDesc, false);
+                    } else {
+                        showWellnessToast(t.alertFocusTitle, t.alertFocusDesc, false);
+                    }
+                }
+            }
+
+            if (timerConfig.waterEnabled) {
+                if (waterSecondsLeft > 0) {
+                    waterSecondsLeft--;
+                } else {
+                    waterSecondsLeft = timerConfig.waterMinutes * 60;
+                    showWellnessToast(t.alertWaterTitle, t.alertWaterDesc, true);
+                }
+            }
+
+            updateTimerDisplays();
+        }, 1000);
+
+        pomoToggleBtn.addEventListener('click', () => {
+            pomoRunning = !pomoRunning;
+            updateTimerDisplays();
+        });
+
+        pomoResetBtn.addEventListener('click', () => {
+            pomoRunning = false;
+            pomoIsBreak = false;
+            pomoSecondsLeft = timerConfig.focusMinutes * 60;
+            updateTimerDisplays();
+        });
+
+        waterResetBtn.addEventListener('click', () => {
+            waterSecondsLeft = timerConfig.waterMinutes * 60;
+            wellnessToast.classList.add('hidden');
+            updateTimerDisplays();
+        });
+
+        timerSettingsBtn.addEventListener('click', () => {
+            timerPopover.classList.toggle('hidden');
+        });
+
+        closePopoverBtn.addEventListener('click', () => {
+            timerPopover.classList.add('hidden');
+        });
+
+        testSoundBtn.addEventListener('click', () => {
+            const selectedSound = document.getElementById('cfgSoundType').value;
+            playGentleNotification(selectedSound);
+        });
+
+        saveTimerCfgBtn.addEventListener('click', () => {
+            const fMin = Math.max(1, Math.min(180, parseInt(document.getElementById('cfgFocusMin').value) || 25));
+            const bMin = Math.max(1, Math.min(60, parseInt(document.getElementById('cfgBreakMin').value) || 5));
+            const wMin = Math.max(1, Math.min(180, parseInt(document.getElementById('cfgWaterMin').value) || 30));
+            const wEnabled = document.getElementById('cfgWaterEnabled').checked;
+            const sType = document.getElementById('cfgSoundType').value;
+
+            timerConfig = {
+                focusMinutes: fMin,
+                breakMinutes: bMin,
+                waterMinutes: wMin,
+                waterEnabled: wEnabled,
+                soundType: sType
+            };
+
+            pomoRunning = false;
+            pomoIsBreak = false;
+            pomoSecondsLeft = fMin * 60;
+            waterSecondsLeft = wMin * 60;
+
+            try {
+                localStorage.setItem(TIMER_CFG_KEY, JSON.stringify(timerConfig));
+            } catch (e) {}
+
+            updateTimerDisplays();
+            timerPopover.classList.add('hidden');
+        });
+
+        function loadTimerPreferences() {
+            try {
+                const raw = localStorage.getItem(TIMER_CFG_KEY);
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    timerConfig = { ...timerConfig, ...parsed };
+                    document.getElementById('cfgFocusMin').value = timerConfig.focusMinutes;
+                    document.getElementById('cfgBreakMin').value = timerConfig.breakMinutes;
+                    document.getElementById('cfgWaterMin').value = timerConfig.waterMinutes;
+                    document.getElementById('cfgWaterEnabled').checked = timerConfig.waterEnabled;
+                    document.getElementById('cfgSoundType').value = timerConfig.soundType;
+
+                    pomoSecondsLeft = timerConfig.focusMinutes * 60;
+                    waterSecondsLeft = timerConfig.waterMinutes * 60;
+                }
+            } catch (e) {}
+            updateTimerDisplays();
+        }
+
+        // ==========================================
+        // 5. FILE MANAGEMENT (+ NEW, RENAME, DELETE)
+        // ==========================================
+        newFileBtn.addEventListener('click', () => {
+            const rawName = prompt(i18n[currentLang].promptNewFile);
+            if (!rawName) return;
+            const fileName = rawName.trim().replace(/^\/+/, '');
+            if (!fileName) return;
+
+            if (projectFiles[fileName]) {
+                alert(i18n[currentLang].errFileExists);
+                return;
+            }
+
+            let initialTemplate = '';
+            const lower = fileName.toLowerCase();
+            if (lower.endsWith('.html') || lower.endsWith('.htm')) {
+                initialTemplate = `<!DOCTYPE html>\n<html lang="en">\n<head>\n    <meta charset="UTF-8">\n    <meta name="viewport" content="width=device-width, initial-scale=1.0">\n    <title>${fileName}</title>\n</head>\n<body>\n    \n</body>\n</html>`;
+            }
+
+            projectFiles[fileName] = {
+                type: 'text',
+                content: initialTemplate,
+                size: new Blob([initialTemplate]).size
+            };
+
+            isMultiFileProject = Object.keys(projectFiles).length > 1;
+            if (isMultiFileProject && !projectArchiveName.endsWith('.zip')) {
+                projectArchiveName = 'project-bundle.zip';
+                projectNameDisplay.textContent = projectArchiveName;
+            }
+
+            refreshSidebarList();
+            switchActiveFile(fileName, lower.endsWith('.html') || lower.endsWith('.htm'));
+        });
+
+        function renameProjectFile(oldPath) {
+            const newRaw = prompt(i18n[currentLang].promptRenameFile, oldPath);
+            if (!newRaw) return;
+            const newPath = newRaw.trim().replace(/^\/+/, '');
+            if (!newPath || newPath === oldPath) return;
+
+            if (projectFiles[newPath]) {
+                alert(i18n[currentLang].errFileExists);
+                return;
+            }
+
+            projectFiles[newPath] = projectFiles[oldPath];
+            delete projectFiles[oldPath];
+
+            if (activeFilePath === oldPath) activeFilePath = newPath;
+            if (currentPreviewHtmlPath === oldPath) currentPreviewHtmlPath = newPath;
+
+            refreshSidebarList();
+            switchActiveFile(activeFilePath, true);
+        }
+
+        function deleteProjectFile(targetPath) {
+            if (!confirm(i18n[currentLang].confirmDeleteFile)) return;
+
+            const entry = projectFiles[targetPath];
+            if (entry && entry.url) {
+                URL.revokeObjectURL(entry.url);
+            }
+            delete projectFiles[targetPath];
+
+            const remaining = Object.keys(projectFiles);
+            if (remaining.length === 0) {
+                projectFiles['untitled.html'] = { type: 'text', content: '', size: 0 };
+                activeFilePath = 'untitled.html';
+                currentPreviewHtmlPath = 'untitled.html';
+                isMultiFileProject = false;
+            } else if (activeFilePath === targetPath) {
+                activeFilePath = remaining[0];
+            }
+
+            refreshSidebarList();
+            switchActiveFile(activeFilePath, true);
+        }
+
+        function refreshSidebarList() {
+            const fileNames = Object.keys(projectFiles);
+            fileNames.sort((a, b) => {
+                const getWeight = (name) => {
+                    const lower = name.toLowerCase();
+                    if (lower === 'index.html' || lower.endsWith('/index.html')) return 1;
+                    if (lower.endsWith('.html') || lower.endsWith('.htm')) return 2;
+                    if (lower.endsWith('.css')) return 3;
+                    if (lower.endsWith('.js')) return 4;
+                    return 5;
+                };
+                return getWeight(a) - getWeight(b) || a.localeCompare(b);
+            });
+            updateSidebarHeaderCount();
+            renderFileSidebar(fileNames);
+        }
+
+        // ==========================================
+        // 6. FOLDER, ZIP & MEDIA FILE INGESTION
+        // ==========================================
+        async function storeBrowserFile(fileObj, cleanPath) {
+            const ext = cleanPath.split('.').pop().toLowerCase();
+            const category = getFileCategory(ext);
+            if (!category) return;
+
+            if (category === 'text') {
+                const text = await fileObj.text();
+                let url = null;
+                let blob = null;
+                if (ext === 'svg') {
+                    blob = new Blob([text], { type: 'image/svg+xml' });
+                    url = URL.createObjectURL(blob);
+                }
+                projectFiles[cleanPath] = {
+                    type: 'text',
+                    content: text,
+                    blob: blob,
+                    url: url,
+                    mime: ext === 'svg' ? 'image/svg+xml' : 'text/plain',
+                    size: fileObj.size
+                };
+            } else {
+                const mime = fileObj.type || getMimeType(ext);
+                const blob = new Blob([await fileObj.arrayBuffer()], { type: mime });
+                const url = URL.createObjectURL(blob);
+                projectFiles[cleanPath] = {
+                    type: category,
+                    blob: blob,
+                    url: url,
+                    mime: mime,
+                    size: fileObj.size
+                };
+            }
+        }
+
+        async function handleDropItems(dataTransfer) {
+            const items = dataTransfer.items;
+
+            if (items && items.length > 0 && items[0].webkitGetAsEntry) {
+                const entries = [];
+                for (let i = 0; i < items.length; i++) {
+                    const entry = items[i].webkitGetAsEntry();
+                    if (entry) entries.push(entry);
+                }
+
+                const hasDirectory = entries.some(entry => entry.isDirectory);
+                if (hasDirectory) {
+                    revokeAllBlobUrls();
+                    projectFiles = {};
+                    isMultiFileProject = true;
+                    const rootFolderName = entries.length === 1 && entries[0].isDirectory ? entries[0].name : 'project-folder';
+                    projectArchiveName = rootFolderName + '.zip';
+                    projectNameDisplay.textContent = rootFolderName;
+
+                    for (const entry of entries) {
+                        await traverseFileTree(entry, '', entries.length === 1 && entry.isDirectory);
+                    }
+
+                    if (Object.keys(projectFiles).length === 0) {
+                        alert(i18n[currentLang].errNoValid);
+                        return;
+                    }
+
+                    finalizeProjectLoad(true);
+                    setStatus(i18n[currentLang].statusLoadedFolder + rootFolderName);
+                    return;
+                }
+            }
+
+            if (dataTransfer.files.length > 0) {
+                handleIncomingFiles(dataTransfer.files);
+            }
+        }
+
+        function traverseFileTree(item, path, skipRootFolder = false) {
+            return new Promise((resolve) => {
+                if (item.isFile) {
+                    if (item.name.startsWith('.')) {
+                        resolve();
+                        return;
+                    }
+
+                    const ext = item.name.split('.').pop().toLowerCase();
+                    if (getFileCategory(ext)) {
+                        item.file(async (file) => {
+                            const fullPath = path ? `${path}/${item.name}` : item.name;
+                            await storeBrowserFile(file, fullPath);
+                            resolve();
+                        }, () => resolve());
+                    } else {
+                        resolve();
+                    }
+                } else if (item.isDirectory) {
+                    if (item.name.startsWith('.') || item.name === 'node_modules') {
+                        resolve();
+                        return;
+                    }
+
+                    const dirReader = item.createReader();
+                    const nextPath = skipRootFolder ? '' : (path ? `${path}/${item.name}` : item.name);
+
+                    const readAllEntries = () => {
+                        dirReader.readEntries(async (entries) => {
+                            if (entries.length === 0) {
+                                resolve();
+                            } else {
+                                for (const subEntry of entries) {
+                                    await traverseFileTree(subEntry, nextPath, false);
+                                }
+                                readAllEntries();
+                            }
+                        }, () => resolve());
+                    };
+                    readAllEntries();
+                } else {
+                    resolve();
+                }
+            });
+        }
+
+        folderInput.addEventListener('change', async (e) => {
+            const files = Array.from(e.target.files);
+            if (files.length === 0) return;
+
+            revokeAllBlobUrls();
+            projectFiles = {};
+            isMultiFileProject = true;
+
+            const firstRelPath = files[0].webkitRelativePath || '';
+            const rootFolderName = firstRelPath.split('/')[0] || 'project-folder';
+            projectArchiveName = rootFolderName + '.zip';
+            projectNameDisplay.textContent = rootFolderName;
+
+            for (const file of files) {
+                const relPath = file.webkitRelativePath || file.name;
+                const cleanPath = relPath.includes('/') ? relPath.substring(relPath.indexOf('/') + 1) : relPath;
+
+                if (cleanPath.split('/').some(part => part.startsWith('.') || part === 'node_modules')) {
+                    continue;
+                }
+
+                await storeBrowserFile(file, cleanPath);
+            }
+
+            if (Object.keys(projectFiles).length === 0) {
+                alert(i18n[currentLang].errNoValid);
+                return;
+            }
+
+            finalizeProjectLoad(true);
+            setStatus(i18n[currentLang].statusLoadedFolder + rootFolderName);
+        });
+
+        async function handleIncomingFiles(fileListObj) {
+            if (!fileListObj || fileListObj.length === 0) return;
+
+            const files = Array.from(fileListObj);
+
+            if (files.length === 1 && files[0].name.toLowerCase().endsWith('.zip')) {
+                await extractZipProject(files[0]);
+                return;
+            }
+
+            revokeAllBlobUrls();
+            projectFiles = {};
+            isMultiFileProject = files.length > 1;
+            projectArchiveName = files.length === 1 ? files[0].name : 'project-bundle.zip';
+            projectNameDisplay.textContent = projectArchiveName;
+
+            for (const file of files) {
+                await storeBrowserFile(file, file.name);
+            }
+
+            if (Object.keys(projectFiles).length === 0) {
+                alert(i18n[currentLang].errNoValid);
+                return;
+            }
+
+            finalizeProjectLoad(true);
+            setStatus(i18n[currentLang].statusLoadedFile + projectArchiveName);
+        }
+
+        async function extractZipProject(zipFile) {
+            try {
+                const zip = await JSZip.loadAsync(zipFile);
+                revokeAllBlobUrls();
+                projectFiles = {};
+                isMultiFileProject = true;
+                projectArchiveName = zipFile.name;
+                projectNameDisplay.textContent = projectArchiveName;
+
+                const filePromises = [];
+
+                zip.forEach((relativePath, zipEntry) => {
+                    if (zipEntry.dir || relativePath.startsWith('__MACOSX') || relativePath.split('/').pop().startsWith('.')) {
+                        return;
+                    }
+
+                    const ext = relativePath.split('.').pop().toLowerCase();
+                    const category = getFileCategory(ext);
+
+                    if (category === 'text') {
+                        const promise = zipEntry.async('string').then(content => {
+                            let url = null;
+                            let blob = null;
+                            if (ext === 'svg') {
+                                blob = new Blob([content], { type: 'image/svg+xml' });
+                                url = URL.createObjectURL(blob);
+                            }
+                            projectFiles[relativePath] = {
+                                type: 'text',
+                                content: content,
+                                blob: blob,
+                                url: url,
+                                mime: ext === 'svg' ? 'image/svg+xml' : 'text/plain',
+                                size: new Blob([content]).size
+                            };
+                        });
+                        filePromises.push(promise);
+                    } else if (category) {
+                        const promise = zipEntry.async('blob').then(rawBlob => {
+                            const mime = getMimeType(ext);
+                            const typedBlob = new Blob([rawBlob], { type: mime });
+                            const url = URL.createObjectURL(typedBlob);
+                            projectFiles[relativePath] = {
+                                type: category,
+                                blob: typedBlob,
+                                url: url,
+                                mime: mime,
+                                size: typedBlob.size
+                            };
+                        });
+                        filePromises.push(promise);
+                    }
+                });
+
+                await Promise.all(filePromises);
+
+                if (Object.keys(projectFiles).length === 0) {
+                    alert(i18n[currentLang].errNoValid);
+                    return;
+                }
+
+                finalizeProjectLoad(true);
+                setStatus(i18n[currentLang].statusLoadedZip + projectArchiveName);
+            } catch (err) {
+                console.error(err);
+                alert(i18n[currentLang].errZip);
+            }
+        }
+
+        function finalizeProjectLoad(forcePreviewRefresh = false) {
+            refreshSidebarList();
+
+            const fileNames = Object.keys(projectFiles);
+            const entryHtml = fileNames.find(f => f.toLowerCase() === 'index.html' || f.toLowerCase().endsWith('/index.html')) ||
+                              fileNames.find(f => f.toLowerCase().endsWith('.html')) ||
+                              fileNames[0];
+
+            currentPreviewHtmlPath = entryHtml;
+            switchActiveFile(entryHtml, forcePreviewRefresh);
+        }
+
+        function renderFileSidebar(fileNames) {
+            fileListContainer.innerHTML = '';
+
+            fileNames.forEach(filePath => {
+                const item = document.createElement('div');
+                item.className = 'file-item' + (filePath === activeFilePath ? ' active' : '');
+                item.dataset.path = filePath;
+
+                const ext = filePath.split('.').pop().toLowerCase();
+                let extClass = 'ext-other';
+                if (ext === 'html' || ext === 'htm') extClass = 'ext-html';
+                else if (ext === 'css') extClass = 'ext-css';
+                else if (ext === 'js') extClass = 'ext-js';
+                else if (imageExtensions.includes(ext)) extClass = 'ext-img';
+                else if (videoExtensions.includes(ext)) extClass = 'ext-vid';
+                else if (audioExtensions.includes(ext)) extClass = 'ext-aud';
+
+                const parts = filePath.split('/');
+                const shortName = parts.pop();
+                const folderPath = parts.join('/');
+                item.title = filePath;
+
+                item.innerHTML = `
+                    <div class="file-item-meta">
+                        <span class="file-item-name">${shortName}</span>
+                        ${folderPath ? `<span class="file-item-folder">${folderPath}/</span>` : ''}
+                    </div>
+                    <div class="file-item-right">
+                        <button class="file-action-btn ren" title="Rename">Ren</button>
+                        <button class="file-action-btn del" title="Delete">Del</button>
+                        <span class="file-ext-tag ${extClass}">${ext}</span>
+                    </div>
+                `;
+
+                item.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('ren')) {
+                        e.stopPropagation();
+                        renameProjectFile(filePath);
+                        return;
+                    }
+                    if (e.target.classList.contains('del')) {
+                        e.stopPropagation();
+                        deleteProjectFile(filePath);
+                        return;
+                    }
+                    switchActiveFile(filePath, false);
+                });
+
+                fileListContainer.appendChild(item);
+            });
+        }
+
+        // ==========================================
+        // 7. SWITCH FILE TANPA REFRESH IFRAME YANG TIDAK PERLU
+        // ==========================================
+        function switchActiveFile(filePath, forceRefresh = false) {
+            activeFilePath = filePath;
+            const fileEntry = projectFiles[filePath];
+            activeFileLabel.textContent = filePath;
+
+            const ext = filePath.split('.').pop().toLowerCase();
+            const isHtmlFile = (ext === 'html' || ext === 'htm');
+
+            document.querySelectorAll('.file-item').forEach(el => {
+                el.classList.toggle('active', el.dataset.path === filePath);
+            });
+
+            let shouldRefreshPreview = forceRefresh;
+            if (isHtmlFile && currentPreviewHtmlPath !== filePath) {
+                currentPreviewHtmlPath = filePath;
+                shouldRefreshPreview = true;
+            }
+
+            if (!fileEntry || fileEntry.type === 'text') {
+                editorWrapper.classList.remove('hidden');
+                mediaViewer.classList.add('hidden');
+                mediaViewer.innerHTML = '';
+
+                codeDisplay.value = fileEntry ? fileEntry.content : '';
+                activeFileType.textContent = ext.toUpperCase() + ' • UTF-8';
+
+                const lines = codeDisplay.value.split('\n').length;
+                lineNumbers.innerHTML = Array.from({ length: lines }, (_, i) => i + 1).join('<br>');
+                updateStatsLabels();
+
+                if (shouldRefreshPreview) {
+                    updatePreview();
+                }
+            } else {
+                editorWrapper.classList.add('hidden');
+                mediaViewer.classList.remove('hidden');
+                activeFileType.textContent = ext.toUpperCase() + ' • MEDIA';
+
+                renderMediaAsset(filePath, fileEntry);
+                updateStatsLabels();
+
+                const hasAnyHtml = Object.keys(projectFiles).some(f => f.toLowerCase().endsWith('.html') || f.toLowerCase().endsWith('.htm'));
+                if (!hasAnyHtml) {
+                    updatePreview();
+                }
+            }
+        }
+
+        function renderMediaAsset(filePath, fileEntry) {
+            const sizeStr = formatBytes(fileEntry.size);
+            let mediaHtml = '';
+
+            if (fileEntry.type === 'image') {
+                mediaHtml = `<img src="${fileEntry.url}" alt="${filePath}">`;
+            } else if (fileEntry.type === 'video') {
+                mediaHtml = `<video src="${fileEntry.url}" controls></video>`;
+            } else if (fileEntry.type === 'audio') {
+                mediaHtml = `<audio src="${fileEntry.url}" controls></audio>`;
+            }
+
+            mediaViewer.innerHTML = `
+                ${mediaHtml}
+                <div class="media-meta-card">
+                    <strong>${filePath}</strong>
+                    <span>Format: ${fileEntry.mime} | Saiz: ${sizeStr}</span>
+                </div>
+            `;
+        }
+
+        // ==========================================
+        // 8. UNIVERSAL ASSET INJECTOR + CONSOLE HOOK
+        // ==========================================
+        function findProjectEntryByRef(refPath) {
+            if (!refPath) return null;
+            if (/^(https?:|data:|blob:|mailto:|tel:|#)/i.test(refPath.trim())) return null;
+
+            const cleanRef = refPath.split('?')[0].split('#')[0].replace(/\\/g, '/').replace(/^(\.\/|\.\.\/)+/, '').toLowerCase();
+            const targetName = cleanRef.split('/').pop();
+            const fileNames = Object.keys(projectFiles);
+
+            const exactKey = fileNames.find(k => k.toLowerCase() === cleanRef);
+            if (exactKey) return projectFiles[exactKey];
+
+            const suffixKey = fileNames.find(k => k.toLowerCase().endsWith('/' + cleanRef));
+            if (suffixKey) return projectFiles[suffixKey];
+
+            const nameKey = fileNames.find(k => k.split('/').pop().toLowerCase() === targetName);
+            return nameKey ? projectFiles[nameKey] : null;
+        }
+
+        function replaceAllMediaReferences(codeStr) {
+            let result = codeStr;
+            const mediaKeys = Object.keys(projectFiles).filter(k => projectFiles[k] && projectFiles[k].url);
+            if (mediaKeys.length === 0) return result;
+
+            mediaKeys.sort((a, b) => b.length - a.length);
+
+            mediaKeys.forEach(key => {
+                const blobUrl = projectFiles[key].url;
+                const fileNameOnly = key.split('/').pop();
+                const variants = new Set([key, fileNameOnly]);
+
+                variants.forEach(variant => {
+                    const escaped = variant.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    const regex = new RegExp(`(["'\`\\(])(?:\\.{1,2}\\/|[a-zA-Z0-9_\\-\\.]+\\/)*${escaped}(\\?[^"'\`\\)]*)?(["'\`\\)])`, 'gi');
+                    result = result.replace(regex, `$1${blobUrl}$3`);
+                });
+            });
+
+            return result;
+        }
+
+        const consoleInterceptorScript = `
+<script>
+(function() {
+    const sendLog = (level, args) => {
+        try {
+            const msg = Array.from(args).map(a => {
+                if (typeof a === 'object') {
+                    try { return JSON.stringify(a); } catch(e) { return String(a); }
+                }
+                return String(a);
+            }).join(' ');
+            window.parent.postMessage({ source: 'html-studio-console', level: level, message: msg }, '*');
+        } catch(err) {}
+    };
+    const origLog = console.log;
+    const origWarn = console.warn;
+    const origError = console.error;
+    console.log = function() { sendLog('log', arguments); origLog.apply(console, arguments); };
+    console.warn = function() { sendLog('warn', arguments); origWarn.apply(console, arguments); };
+    console.error = function() { sendLog('error', arguments); origError.apply(console, arguments); };
+    window.addEventListener('error', function(e) {
+        sendLog('error', [e.message + ' (Line ' + e.lineno + ')']);
+    });
+})();
+<\/script>`;
+
+        function buildBundledHtml() {
+            const fileNames = Object.keys(projectFiles);
+
+            if (fileNames.length === 0) {
+                return codeDisplay.value;
+            }
+
+            let mainHtmlPath = (currentPreviewHtmlPath && projectFiles[currentPreviewHtmlPath] && (currentPreviewHtmlPath.toLowerCase().endsWith('.html') || currentPreviewHtmlPath.toLowerCase().endsWith('.htm')))
+                ? currentPreviewHtmlPath
+                : (fileNames.find(f => f.toLowerCase() === 'index.html' || f.toLowerCase().endsWith('/index.html')) || fileNames.find(f => f.toLowerCase().endsWith('.html')));
+
+            if (!mainHtmlPath) {
+                const activeEntry = projectFiles[activeFilePath];
+                if (activeEntry && activeEntry.url) {
+                    if (activeEntry.type === 'image') return `<body style="margin:0;display:flex;justify-content:center;align-items:center;height:100vh;background:#111;"><img src="${activeEntry.url}" style="max-width:95%;max-height:95%;"></body>`;
+                    if (activeEntry.type === 'video') return `<body style="margin:0;display:flex;justify-content:center;align-items:center;height:100vh;background:#000;"><video src="${activeEntry.url}" controls autoplay style="max-width:95%;max-height:95%;"></video></body>`;
+                    if (activeEntry.type === 'audio') return `<body style="margin:0;display:flex;justify-content:center;align-items:center;height:100vh;background:#111;"><audio src="${activeEntry.url}" controls autoplay></audio></body>`;
+                }
+                return `<pre style="font-family:monospace;padding:16px;">Tiada fail .html ditemui untuk paparan pratonton.</pre>`;
+            }
+
+            let htmlContent = projectFiles[mainHtmlPath].content;
+
+            htmlContent = htmlContent.replace(/<link\b[^>]*href=["']([^"']+\.css[^"']*)["'][^>]*>/gi, (match, href) => {
+                const entry = findProjectEntryByRef(href);
+                if (entry && entry.type === 'text') {
+                    return `<style>\n/* Injected from ${href} */\n${entry.content}\n</style>`;
+                }
+                return match;
+            });
+
+            htmlContent = htmlContent.replace(/<script\b[^>]*src=["']([^"']+\.js[^"']*)["'][^>]*><\/script>/gi, (match, src) => {
+                const entry = findProjectEntryByRef(src);
+                if (entry && entry.type === 'text') {
+                    return `<script>\n/* Injected from ${src} */\n${entry.content}\n<\/script>`;
+                }
+                return match;
+            });
+
+            htmlContent = replaceAllMediaReferences(htmlContent);
+
+            if (htmlContent.includes('<head>')) {
+                htmlContent = htmlContent.replace('<head>', '<head>' + consoleInterceptorScript);
+            } else {
+                htmlContent = consoleInterceptorScript + htmlContent;
+            }
+
+            return htmlContent;
+        }
+
+        function updatePreview() {
+            if (currentMode !== 'code') {
+                resetConsoleLogs();
+                previewFrame.srcdoc = buildBundledHtml();
+            }
+        }
+
+        function updateEditorState() {
+            const content = codeDisplay.value;
+            
+            if (activeFilePath && (!projectFiles[activeFilePath] || projectFiles[activeFilePath].type === 'text')) {
+                const existing = projectFiles[activeFilePath] || {};
+                projectFiles[activeFilePath] = {
+                    ...existing,
+                    type: 'text',
+                    content: content,
+                    size: new Blob([content]).size
+                };
+            }
+
+            updatePreview();
+
+            const lines = content.split('\n').length;
+            lineNumbers.innerHTML = Array.from({ length: lines }, (_, i) => i + 1).join('<br>');
+
+            updateStatsLabels();
+        }
+
+        // ==========================================
+        // 9. CONSOLE, VIEWPORT & FIND/REPLACE CONTROLS
+        // ==========================================
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.source === 'html-studio-console') {
+                appendConsoleLine(event.data.level, event.data.message);
+            }
+        });
+
+        function appendConsoleLine(level, message) {
+            const line = document.createElement('div');
+            line.className = `console-line console-${level}`;
+            const time = new Date().toLocaleTimeString([], { hour12: false });
+            line.textContent = `[${time}] ${message}`;
+            consoleOutput.appendChild(line);
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+
+            if (level === 'error') {
+                consoleErrorCount++;
+                consoleErrorBadge.textContent = consoleErrorCount;
+                consoleErrorBadge.classList.remove('hidden');
+            }
+        }
+
+        function resetConsoleLogs() {
+            consoleOutput.innerHTML = '';
+            consoleErrorCount = 0;
+            consoleErrorBadge.classList.add('hidden');
+        }
+
+        toggleConsoleBtn.addEventListener('click', () => {
+            consoleDrawer.classList.toggle('hidden');
+            toggleConsoleBtn.classList.toggle('active', !consoleDrawer.classList.contains('hidden'));
+        });
+
+        clearConsoleBtn.addEventListener('click', resetConsoleLogs);
+
+        refreshPreviewBtn.addEventListener('click', () => {
+            updatePreview();
+        });
+
+        deviceButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                deviceButtons.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+
+                const targetWidth = btn.dataset.width;
+                if (targetWidth === '100%') {
+                    previewStage.classList.remove('device-mode');
+                    previewFrame.style.width = '100%';
+                } else {
+                    previewStage.classList.add('device-mode');
+                    previewFrame.style.width = targetWidth;
+                }
+            });
+        });
+
+        function openFindBar() {
+            findBar.classList.remove('hidden');
+            findInput.focus();
+            updateFindMatchesCount();
+        }
+
+        function closeFindBar() {
+            findBar.classList.add('hidden');
+            codeDisplay.focus();
+        }
+
+        function updateFindMatchesCount() {
+            const query = findInput.value;
+            if (!query) {
+                findCountLabel.textContent = '0' + i18n[currentLang].matches;
+                return;
+            }
+            const text = codeDisplay.value;
+            const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const matches = text.match(new RegExp(escaped, 'gi'));
+            const count = matches ? matches.length : 0;
+            findCountLabel.textContent = count + i18n[currentLang].matches;
+        }
+
+        toggleFindBtn.addEventListener('click', () => {
+            if (findBar.classList.contains('hidden')) openFindBar();
+            else closeFindBar();
+        });
+
+        closeFindBtn.addEventListener('click', closeFindBar);
+        findInput.addEventListener('input', updateFindMatchesCount);
+
+        findNextBtn.addEventListener('click', () => {
+            const query = findInput.value;
+            if (!query) return;
+            const text = codeDisplay.value;
+            const startPos = codeDisplay.selectionEnd;
+            let idx = text.toLowerCase().indexOf(query.toLowerCase(), startPos);
+            if (idx === -1) {
+                idx = text.toLowerCase().indexOf(query.toLowerCase(), 0);
+            }
+            if (idx !== -1) {
+                codeDisplay.focus();
+                codeDisplay.setSelectionRange(idx, idx + query.length);
+            }
+        });
+
+        replaceBtn.addEventListener('click', () => {
+            const query = findInput.value;
+            const replacement = replaceInput.value;
+            if (!query) return;
+
+            const selectedText = codeDisplay.value.substring(codeDisplay.selectionStart, codeDisplay.selectionEnd);
+            if (selectedText.toLowerCase() === query.toLowerCase()) {
+                const start = codeDisplay.selectionStart;
+                codeDisplay.value = codeDisplay.value.substring(0, start) + replacement + codeDisplay.value.substring(codeDisplay.selectionEnd);
+                codeDisplay.setSelectionRange(start, start + replacement.length);
+                updateEditorState();
+                updateFindMatchesCount();
+            } else {
+                findNextBtn.click();
+            }
+        });
+
+        replaceAllBtn.addEventListener('click', () => {
+            const query = findInput.value;
+            const replacement = replaceInput.value;
+            if (!query) return;
+
+            const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            codeDisplay.value = codeDisplay.value.replace(new RegExp(escaped, 'gi'), replacement);
+            updateEditorState();
+            updateFindMatchesCount();
+        });
+
+        // ==========================================
+        // 10. STANDARD EDITOR & WORKSPACE CONTROLS
+        // ==========================================
+        function updateModeLabel() {
+            const t = i18n[currentLang];
+            if (currentMode === 'split') viewModeStatus.textContent = t.modeSplit;
+            else if (currentMode === 'code') viewModeStatus.textContent = t.modeCode;
+            else if (currentMode === 'preview') viewModeStatus.textContent = t.modePreview;
+        }
+
+        function updateStatsLabels() {
+            const t = i18n[currentLang];
+            const activeEntry = projectFiles[activeFilePath];
+
+            if (activeEntry && activeEntry.type !== 'text') {
+                lineCount.textContent = t.lines + '-';
+                charCount.textContent = t.chars + '-';
+                fileSizeDisplay.textContent = t.size + formatBytes(activeEntry.size);
+            } else {
+                const content = codeDisplay.value;
+                const lines = content.split('\n').length;
+                const byteSize = new Blob([content]).size;
+
+                lineCount.textContent = t.lines + lines;
+                charCount.textContent = t.chars + content.length;
+                fileSizeDisplay.textContent = t.size + formatBytes(byteSize);
+            }
+        }
+
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function setStatus(msg) {
+            statusText.textContent = msg;
+            setTimeout(() => {
+                statusText.textContent = i18n[currentLang].statusReady;
+            }, 3000);
+        }
+
+        fullscreenBtn.addEventListener('click', () => {
+            if (!document.fullscreenElement) {
+                if (previewFrame.requestFullscreen) {
+                    previewFrame.requestFullscreen();
+                } else if (previewFrame.webkitRequestFullscreen) {
+                    previewFrame.webkitRequestFullscreen();
+                }
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
+            }
+        });
+
+        document.addEventListener('fullscreenchange', () => {
+            const t = i18n[currentLang];
+            setStatus(document.fullscreenElement ? t.statusFsEnter : t.statusFsExit);
+        });
+
+        function setViewMode(mode) {
+            currentMode = mode;
+
+            viewButtons.forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.mode === mode);
+            });
+
+            if (mode === 'split') {
+                editorPanel.classList.remove('hidden', 'full-width');
+                previewPanel.classList.remove('hidden');
+                updatePreview();
+            } else if (mode === 'code') {
+                editorPanel.classList.remove('hidden');
+                editorPanel.classList.add('full-width');
+                previewPanel.classList.add('hidden');
+            } else if (mode === 'preview') {
+                editorPanel.classList.add('hidden');
+                previewPanel.classList.remove('hidden');
+                updatePreview();
+            }
+            updateModeLabel();
+        }
+
+        viewButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                setViewMode(btn.dataset.mode);
+            });
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.shiftKey && e.altKey && e.key.toLowerCase() === 'f') {
+                e.preventDefault();
+                formatActiveCode();
+                return;
+            }
+            if (e.ctrlKey || e.metaKey) {
+                if (e.key === '1') {
+                    e.preventDefault();
+                    setViewMode('split');
+                } else if (e.key === '2') {
+                    e.preventDefault();
+                    setViewMode('code');
+                } else if (e.key === '3') {
+                    e.preventDefault();
+                    setViewMode('preview');
+                } else if (e.key.toLowerCase() === 'f') {
+                    e.preventDefault();
+                    openFindBar();
+                }
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            handleIncomingFiles(e.target.files);
+        });
+
+        codeDisplay.addEventListener('input', () => {
+            updateEditorState();
+        });
+
+        codeDisplay.addEventListener('scroll', () => {
+            lineNumbers.scrollTop = codeDisplay.scrollTop;
+        });
+
+        codeDisplay.addEventListener('keydown', function(e) {
+            if (e.key === 'Tab') {
+                e.preventDefault();
+                const start = this.selectionStart;
+                const end = this.selectionEnd;
+                this.value = this.value.substring(0, start) + '    ' + this.value.substring(end);
+                this.selectionStart = this.selectionEnd = start + 4;
+                updateEditorState();
+            }
+        });
+
+        copyBtn.addEventListener('click', () => {
+            const activeEntry = projectFiles[activeFilePath];
+            if (activeEntry && activeEntry.type !== 'text') {
+                setStatus(i18n[currentLang].statusCopyMediaErr);
+                return;
+            }
+            if (!codeDisplay.value) return;
+            navigator.clipboard.writeText(codeDisplay.value);
+            setStatus(i18n[currentLang].statusCopied);
+        });
+
+        downloadBtn.addEventListener('click', async () => {
+            const fileKeys = Object.keys(projectFiles);
+
+            if (isMultiFileProject && fileKeys.length > 1) {
+                const zip = new JSZip();
+                fileKeys.forEach(path => {
+                    const entry = projectFiles[path];
+                    if (entry.type === 'text') {
+                        zip.file(path, entry.content);
+                    } else if (entry.blob) {
+                        zip.file(path, entry.blob);
+                    }
+                });
+
+                const blob = await zip.generateAsync({ type: 'blob' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = projectArchiveName.endsWith('.zip') ? projectArchiveName : 'updated-project.zip';
+                a.click();
+                URL.revokeObjectURL(url);
+                setStatus(i18n[currentLang].statusDownloaded + a.download);
+            } else {
+                const activeEntry = projectFiles[activeFilePath];
+                let blob;
+                if (activeEntry && activeEntry.blob) {
+                    blob = activeEntry.blob;
+                } else {
+                    blob = new Blob([codeDisplay.value], { type: 'text/plain;charset=utf-8' });
+                }
+
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = activeFilePath || 'untitled.html';
+                a.click();
+                URL.revokeObjectURL(url);
+                setStatus(i18n[currentLang].statusDownloaded + a.download);
+            }
+        });
+
+        clearBtn.addEventListener('click', () => {
+            revokeAllBlobUrls();
+            projectFiles = {
+                'untitled.html': { type: 'text', content: '', size: 0 }
+            };
+            isMultiFileProject = false;
+            activeFilePath = 'untitled.html';
+            currentPreviewHtmlPath = 'untitled.html';
+            projectArchiveName = 'untitled.html';
+
+            editorWrapper.classList.remove('hidden');
+            mediaViewer.classList.add('hidden');
+            mediaViewer.innerHTML = '';
+
+            codeDisplay.value = '';
+            projectNameDisplay.textContent = 'untitled.html';
+            activeFileLabel.textContent = 'untitled.html';
+            activeFileType.textContent = 'UTF-8';
+            fileInput.value = '';
+            folderInput.value = '';
+
+            refreshSidebarList();
+            updateEditorState();
+            setStatus(i18n[currentLang].statusCleared);
+        });
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+            });
+        });
+
+        dropZone.addEventListener('dragenter', () => dropOverlay.classList.add('active'));
+        dropZone.addEventListener('dragover', () => dropOverlay.classList.add('active'));
+        
+        dropZone.addEventListener('dragleave', (e) => {
+            if (!dropZone.contains(e.relatedTarget)) {
+                dropOverlay.classList.remove('active');
+            }
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            dropOverlay.classList.remove('active');
+            handleDropItems(e.dataTransfer);
+        });
+    </script>
+</body>
+</html>
